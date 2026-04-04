@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Logs
+*.log
+
+# Chrome Extension packaging artifacts
+*.crx
+*.pem
+*.zip
+
+# Temp
+*.tmp
+*.bak

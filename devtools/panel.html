@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RequestLab</title>
+  <link rel="stylesheet" href="../lib/codemirror/codemirror.min.css">
+  <link rel="stylesheet" href="../lib/codemirror/theme/material-darker.min.css">
+  <link rel="stylesheet" href="../lib/codemirror/addon/fold/foldgutter.min.css">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+  <!-- Disclaimer Banner -->
+  <div id="disclaimer-banner">
+    <span>⚠ RequestLab — For authorized testing and development only. Do not use on systems you don't own.</span>
+    <button id="btn-dismiss-disclaimer">✕</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div id="toolbar-left">
+      <button id="btn-record" class="toolbar-btn active" title="Recording">
+        <span class="rec-dot"></span> REC
+      </button>
+      <button id="btn-pause" class="toolbar-btn" title="Pause interception">⏸ Pause</button>
+      <button id="btn-clear" class="toolbar-btn" title="Clear log">⌫ Clear</button>
+      <div class="toolbar-sep"></div>
+      <input id="filter-url" type="text" placeholder="Filter URL or keyword…" autocomplete="off" spellcheck="false">
+      <select id="filter-method">
+        <option value="">All Methods</option>
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="PATCH">PATCH</option>
+        <option value="DELETE">DELETE</option>
+        <option value="OPTIONS">OPTIONS</option>
+      </select>
+      <select id="filter-type">
+        <option value="">All Types</option>
+        <option value="json">JSON</option>
+        <option value="html">HTML</option>
+        <option value="js">JS</option>
+        <option value="css">CSS</option>
+        <option value="xhr">XHR/Fetch</option>
+        <option value="ws">WebSocket</option>
+      </select>
+      <label id="filter-rl-label" title="Show only rate-limited (429) responses">
+        <input type="checkbox" id="filter-rate-limited"> 429 only
+      </label>
+    </div>
+    <div id="toolbar-right">
+      <button id="btn-rules-toggle" class="toolbar-btn" title="Rules Engine">⚙ Rules</button>
+      <button id="btn-rl-bypass-toggle" class="toolbar-btn" title="Rate Limit Bypass">⚡ RL Bypass</button>
+      <span id="status-indicator" class="status-disconnected" title="Debugger status">● Disconnected</span>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div id="main-layout">
+
+    <!-- Left: Request Log -->
+    <div id="request-list-pane">
+      <div id="request-list-header">
+        <span class="col-method">Method</span>
+        <span class="col-status">Status</span>
+        <span class="col-url">URL</span>
+        <span class="col-type">Type</span>
+        <span class="col-size">Size</span>
+        <span class="col-time">Time</span>
+      </div>
+      <div id="scroll-container">
+        <div id="spacer-top"></div>
+        <div id="virtual-rows"></div>
+        <div id="spacer-bottom"></div>
+      </div>
+      <div id="list-footer">
+        <span id="request-count">0 requests</span>
+        <span id="filtered-count"></span>
+      </div>
+    </div>
+
+    <!-- Resize Handle -->
+    <div id="resize-handle"></div>
+
+    <!-- Right: Detail Inspector -->
+    <div id="detail-pane">
+      <div id="detail-empty">
+        <div class="empty-icon">⟁</div>
+        <p>Select a request to inspect</p>
+      </div>
+
+      <div id="detail-content" class="hidden">
+        <!-- Request summary bar -->
+        <div id="detail-summary">
+          <span id="summary-method" class="method-badge">GET</span>
+          <span id="summary-status" class="status-badge">200</span>
+          <span id="summary-url" title=""></span>
+          <span id="summary-time"></span>
+          <span id="summary-size"></span>
+          <span id="summary-flags"></span>
+        </div>
+
+        <!-- Tabs -->
+        <div id="detail-tabs">
+          <button class="tab-btn active" data-tab="headers">Headers</button>
+          <button class="tab-btn" data-tab="body">Body</button>
+          <button class="tab-btn" data-tab="response">Response</button>
+          <button class="tab-btn" data-tab="replay">Replay</button>
+          <button class="tab-btn" data-tab="export">Export</button>
+          <button class="tab-btn" data-tab="ws">WebSocket</button>
+        </div>
+
+        <!-- Headers Tab -->
+        <div id="tab-headers" class="tab-panel active">
+          <div class="section-title">Request Headers</div>
+          <table id="req-headers-table" class="headers-table"></table>
+          <div class="section-title">Response Headers</div>
+          <table id="resp-headers-table" class="headers-table"></table>
+          <div id="auth-tokens-section" class="hidden">
+            <div class="section-title">
+              Extracted Tokens
+              <span class="token-warning">⚠ Sensitive — click to reveal</span>
+            </div>
+            <div id="auth-tokens-list"></div>
+          </div>
+        </div>
+
+        <!-- Body Tab -->
+        <div id="tab-body" class="tab-panel hidden">
+          <div class="editor-toolbar">
+            <span class="editor-label">Request Body</span>
+            <button id="btn-format-body" class="editor-btn">Format JSON</button>
+            <button id="btn-apply-body" class="editor-btn accent">Apply (Ctrl+S)</button>
+          </div>
+          <div id="codemirror-body"></div>
+        </div>
+
+        <!-- Response Tab -->
+        <div id="tab-response" class="tab-panel hidden">
+          <div class="editor-toolbar">
+            <span class="editor-label">Response Body</span>
+            <span id="response-mime" class="mime-badge"></span>
+            <button id="btn-format-response" class="editor-btn">Format JSON</button>
+            <span id="response-truncated" class="truncated-badge hidden">⚠ Truncated (>10MB)</span>
+          </div>
+          <div id="codemirror-response"></div>
+        </div>
+
+        <!-- Replay Tab -->
+        <div id="tab-replay" class="tab-panel hidden">
+          <div class="replay-section">
+            <div class="section-title">Replay Request</div>
+            <div class="replay-field">
+              <label>Method</label>
+              <select id="replay-method">
+                <option>GET</option><option>POST</option><option>PUT</option>
+                <option>PATCH</option><option>DELETE</option><option>OPTIONS</option>
+              </select>
+            </div>
+            <div class="replay-field">
+              <label>URL</label>
+              <input id="replay-url" type="text" spellcheck="false">
+            </div>
+            <div class="replay-field">
+              <label>Headers (JSON)</label>
+              <div id="codemirror-replay-headers"></div>
+            </div>
+            <div class="replay-field">
+              <label>Body</label>
+              <div id="codemirror-replay-body"></div>
+            </div>
+            <div class="replay-actions">
+              <button id="btn-replay-send" class="accent-btn">▶ Send Request</button>
+              <button id="btn-replay-reset" class="toolbar-btn">Reset</button>
+            </div>
+            <div id="replay-status" class="hidden"></div>
+          </div>
+        </div>
+
+        <!-- Export Tab -->
+        <div id="tab-export" class="tab-panel hidden">
+          <div class="export-format-tabs">
+            <button class="export-tab-btn active" data-fmt="curl">cURL</button>
+            <button class="export-tab-btn" data-fmt="fetch">fetch()</button>
+            <button class="export-tab-btn" data-fmt="python">Python</button>
+          </div>
+          <div class="export-editor-wrap">
+            <div id="codemirror-export"></div>
+          </div>
+          <div class="export-actions">
+            <button id="btn-copy-export" class="accent-btn">Copy to Clipboard</button>
+          </div>
+        </div>
+
+        <!-- WebSocket Tab -->
+        <div id="tab-ws" class="tab-panel hidden">
+          <div id="ws-empty">No WebSocket connection for this request.</div>
+          <div id="ws-info" class="hidden">
+            <div id="ws-header-info"></div>
+            <div id="ws-frames-list"></div>
+          </div>
+        </div>
+
+      </div><!-- /detail-content -->
+    </div><!-- /detail-pane -->
+  </div><!-- /main-layout -->
+
+  <!-- Rules Engine Panel -->
+  <div id="rules-panel" class="side-panel hidden">
+    <div class="side-panel-header">
+      <span>⚙ Rules Engine</span>
+      <button id="btn-rules-close" class="icon-btn">✕</button>
+    </div>
+    <div class="side-panel-body">
+      <div id="rules-list-container">
+        <div id="rules-empty" class="panel-empty">No rules yet. Add one below.</div>
+        <div id="rules-list"></div>
+      </div>
+      <button id="btn-add-rule" class="accent-btn full-width">+ Add Rule</button>
+    </div>
+  </div>
+
+  <!-- Rate Limit Bypass Panel -->
+  <div id="rl-bypass-panel" class="side-panel hidden">
+    <div class="side-panel-header">
+      <span>⚡ Rate Limit Bypass</span>
+      <button id="btn-rl-close" class="icon-btn">✕</button>
+    </div>
+    <div class="side-panel-body">
+      <label class="toggle-row">
+        <span>Enable bypass</span>
+        <input type="checkbox" id="rl-enabled">
+      </label>
+      <label class="toggle-row">
+        <span>Strip X-RateLimit-* headers</span>
+        <input type="checkbox" id="rl-strip-headers" checked>
+      </label>
+      <label class="toggle-row">
+        <span>Rotate User-Agent string</span>
+        <input type="checkbox" id="rl-rotate-ua">
+      </label>
+      <div class="toggle-row">
+        <span>Add delay between requests (ms)</span>
+        <input type="number" id="rl-delay" min="0" max="10000" value="0" class="number-input">
+      </div>
+      <div class="section-title" style="margin-top:12px">Rate-Limited (429) Log</div>
+      <div id="rl-log-list" class="rl-log"></div>
+    </div>
+  </div>
+
+  <!-- Rule Editor Modal -->
+  <div id="rule-modal-overlay" class="modal-overlay hidden">
+    <div id="rule-modal" class="modal">
+      <div class="modal-header">
+        <span id="rule-modal-title">Add Rule</span>
+        <button id="btn-rule-modal-close" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <label>Rule Name</label>
+          <input id="rule-name" type="text" placeholder="My Rule">
+        </div>
+        <div class="form-row">
+          <label>Type</label>
+          <select id="rule-type">
+            <option value="mock_response">Mock Response</option>
+            <option value="modify_response_body">Modify Response Body</option>
+            <option value="modify_request_body">Modify Request Body</option>
+            <option value="inject_request_header">Inject Request Header</option>
+            <option value="inject_response_header">Inject Response Header</option>
+            <option value="remove_request_header">Remove Request Header</option>
+            <option value="status_override">Status Code Override</option>
+            <option value="block_request">Block Request</option>
+            <option value="redirect">Redirect</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>URL Pattern <small>(substring or regex)</small></label>
+          <div class="input-row">
+            <input id="rule-url-pattern" type="text" placeholder="api/v1/users">
+            <label class="checkbox-label"><input type="checkbox" id="rule-url-regex"> regex</label>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Methods <small>(leave empty for all)</small></label>
+          <div class="method-checkboxes">
+            <label><input type="checkbox" name="rule-method" value="GET"> GET</label>
+            <label><input type="checkbox" name="rule-method" value="POST"> POST</label>
+            <label><input type="checkbox" name="rule-method" value="PUT"> PUT</label>
+            <label><input type="checkbox" name="rule-method" value="PATCH"> PATCH</label>
+            <label><input type="checkbox" name="rule-method" value="DELETE"> DELETE</label>
+          </div>
+        </div>
+        <!-- Dynamic action fields based on rule type -->
+        <div id="rule-action-fields"></div>
+        <div class="form-row">
+          <label>Priority <small>(higher = evaluated first)</small></label>
+          <input id="rule-priority" type="number" value="10" min="1" max="1000">
+        </div>
+        <label class="toggle-row">
+          <span>Enabled</span>
+          <input type="checkbox" id="rule-enabled" checked>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-rule-cancel" class="toolbar-btn">Cancel</button>
+        <button id="btn-rule-save" class="accent-btn">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts — order matters: CodeMirror core first, then addons, then panel.js -->
+  <script src="../lib/codemirror/codemirror.min.js"></script>
+  <script src="../lib/codemirror/mode/javascript/javascript.min.js"></script>
+  <script src="../lib/codemirror/mode/shell/shell.min.js"></script>
+  <script src="../lib/codemirror/mode/python/python.min.js"></script>
+  <script src="../lib/codemirror/addon/edit/matchbrackets.min.js"></script>
+  <script src="../lib/codemirror/addon/edit/closebrackets.min.js"></script>
+  <script src="../lib/codemirror/addon/fold/foldcode.min.js"></script>
+  <script src="../lib/codemirror/addon/fold/brace-fold.min.js"></script>
+  <script src="../lib/codemirror/addon/fold/foldgutter.min.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

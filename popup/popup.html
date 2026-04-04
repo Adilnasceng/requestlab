@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RequestLab</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="header">
+    <img src="../icons/icon.svg" width="22" height="22" alt="RequestLab">
+    <span id="title">RequestLab</span>
+    <span id="version">v1.0</span>
+  </div>
+
+  <div id="disclaimer">
+    ⚠ Authorized testing only
+  </div>
+
+  <div id="status-section">
+    <div id="status-row">
+      <span id="status-dot" class="dot-off"></span>
+      <span id="status-text">No active session</span>
+    </div>
+  </div>
+
+  <div id="stats-grid">
+    <div class="stat-box">
+      <span class="stat-value" id="stat-total">0</span>
+      <span class="stat-label">Captured</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-value" id="stat-429">0</span>
+      <span class="stat-label">Rate-Ltd</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-value" id="stat-rules">0</span>
+      <span class="stat-label">Rules</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-value" id="stat-ws">0</span>
+      <span class="stat-label">WS Conns</span>
+    </div>
+  </div>
+
+  <div id="hint">
+    <span>Open</span>
+    <kbd>F12</kbd>
+    <span>→ RequestLab tab to use the panel</span>
+  </div>
+
+  <div id="footer">
+    <a id="link-devtools" href="#">Open DevTools Panel ↗</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

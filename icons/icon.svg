@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="16" fill="#0d1117"/>
+  <!-- Network lines -->
+  <line x1="20" y1="64" x2="108" y2="64" stroke="#00ff88" stroke-width="2" stroke-dasharray="6,3" opacity="0.4"/>
+  <line x1="64" y1="20" x2="64" y2="108" stroke="#00ff88" stroke-width="2" stroke-dasharray="6,3" opacity="0.4"/>
+  <!-- Outer ring -->
+  <circle cx="64" cy="64" r="40" fill="none" stroke="#00ff88" stroke-width="2.5" opacity="0.7"/>
+  <!-- Inner circle -->
+  <circle cx="64" cy="64" r="18" fill="none" stroke="#00ff88" stroke-width="2"/>
+  <!-- Center dot -->
+  <circle cx="64" cy="64" r="5" fill="#00ff88"/>
+  <!-- Corner nodes -->
+  <circle cx="24" cy="64" r="4" fill="#00ff88" opacity="0.9"/>
+  <circle cx="104" cy="64" r="4" fill="#00ff88" opacity="0.9"/>
+  <circle cx="64" cy="24" r="4" fill="#00ff88" opacity="0.9"/>
+  <circle cx="64" cy="104" r="4" fill="#00ff88" opacity="0.9"/>
+  <!-- Intercept arrow (right side) -->
+  <polyline points="88,58 98,64 88,70" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
